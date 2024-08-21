@@ -1,7 +1,6 @@
 import os
 import requests
 from urllib.parse import urljoin
-from lxml import html
 import streamlit as st
 
 # Streamlit interface
@@ -20,8 +19,15 @@ if st.button("Start Scraping"):
         response = requests.get(url)
         response.raise_for_status()  # Check if the request was successful
 
-        tree = html.fromstring(response.content)
-        pdf_links = tree.xpath("//a[contains(@href, '.pdf')]/@href")
+        # Simple string matching to find PDF links
+        pdf_links = []
+        for line in response.text.splitlines():
+            if '.pdf' in line and 'href="' in line:
+                start = line.find('href="') + len('href="')
+                end = line.find('"', start)
+                link = line[start:end]
+                if link.endswith('.pdf'):
+                    pdf_links.append(link)
 
         if not pdf_links:
             st.warning("No PDF files found at the provided URL.")
