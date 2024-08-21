@@ -2,30 +2,38 @@ import os
 import requests
 from urllib.parse import urljoin
 from bs4 import BeautifulSoup
+import streamlit as st
 
-# Define the URL of the website you want to scrape
-url = "https://www.savemyexams.co.uk/igcse-physics-cie-new/past-papers/"
+# Streamlit interface
+st.title("PDF Scraper")
 
-# Define the location where you want to save the downloaded PDFs
-folder_location = r'/Users/tansk/downloads'
+# Input fields for URL and folder location
+url = st.text_input("Enter the URL to scrape PDFs from:", "https://www.savemyexams.co.uk/igcse-physics-cie-new/past-papers/")
+folder_location = st.text_input("Enter the folder location to save PDFs:", "/Users/tansk/downloads")
 
-# Create the folder if it doesn't exist
-if not os.path.exists(folder_location):
-    os.mkdir(folder_location)
+# Button to start the scraping process
+if st.button("Start Scraping"):
+    if not os.path.exists(folder_location):
+        os.mkdir(folder_location)
 
-# Send a GET request to the website
-response = requests.get(url)
+    try:
+        response = requests.get(url)
+        response.raise_for_status()  # Check if the request was successful
 
-# Parse the content of the request with BeautifulSoup
-soup = BeautifulSoup(response.text, "html.parser")
+        soup = BeautifulSoup(response.text, "html.parser")
+        pdf_links = soup.select("a[href$='.pdf']")
 
-# Find all links that end with .pdf
-for link in soup.select("a[href$='.pdf']"):
-    # Create the complete filename by joining the folder location with the file name extracted from the link
-    filename = os.path.join(folder_location, link['href'].split('/')[-1])
-    
-    # Send a GET request to download the PDF
-    with open(filename, 'wb') as f:
-        f.write(requests.get(urljoin(url, link['href'])).content)
+        if not pdf_links:
+            st.warning("No PDF files found at the provided URL.")
+        else:
+            for link in pdf_links:
+                filename = os.path.join(folder_location, link['href'].split('/')[-1])
+                with open(filename, 'wb') as f:
+                    f.write(requests.get(urljoin(url, link['href'])).content)
+            st.success(f"Downloaded {len(pdf_links)} PDF files to {folder_location}")
 
-print("Download completed successfully!")
+    except requests.exceptions.RequestException as e:
+        st.error(f"An error occurred: {e}")
+
+# Additional instructions or information
+st.write("Enter the URL and folder location, then click 'Start Scraping' to download PDF files.")
