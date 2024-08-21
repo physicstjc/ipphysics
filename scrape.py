@@ -1,7 +1,7 @@
 import os
 import requests
 from urllib.parse import urljoin
-from bs4 import BeautifulSoup
+from lxml import html
 import streamlit as st
 
 # Streamlit interface
@@ -20,16 +20,17 @@ if st.button("Start Scraping"):
         response = requests.get(url)
         response.raise_for_status()  # Check if the request was successful
 
-        soup = BeautifulSoup(response.text, "html.parser")
-        pdf_links = soup.select("a[href$='.pdf']")
+        tree = html.fromstring(response.content)
+        pdf_links = tree.xpath("//a[contains(@href, '.pdf')]/@href")
 
         if not pdf_links:
             st.warning("No PDF files found at the provided URL.")
         else:
             for link in pdf_links:
-                filename = os.path.join(folder_location, link['href'].split('/')[-1])
+                full_url = urljoin(url, link)
+                filename = os.path.join(folder_location, link.split('/')[-1])
                 with open(filename, 'wb') as f:
-                    f.write(requests.get(urljoin(url, link['href'])).content)
+                    f.write(requests.get(full_url).content)
             st.success(f"Downloaded {len(pdf_links)} PDF files to {folder_location}")
 
     except requests.exceptions.RequestException as e:
